@@ -19,7 +19,6 @@ class CustomCrop extends Component {
                 Dimensions.get('window').width * (props.height / props.width),
             height: props.height,
             width: props.width,
-            image: props.initialImage,
             moving: false,
         };
 
@@ -122,8 +121,15 @@ class CustomCrop extends Component {
         };
         NativeModules.CustomCropManager.crop(
             coordinates,
-            this.state.image,
-            (err, res) => this.props.updateImage(res.image, coordinates),
+            `file://${this.props.path}`,
+            (err, res) => {
+                if (err) {
+                    console.warn(err);
+                    return;
+                }
+
+                this.props.updateImage(res.path, coordinates);
+            },
         );
     }
 
@@ -176,7 +182,7 @@ class CustomCrop extends Component {
                             { height: this.state.viewHeight },
                         ]}
                         resizeMode="contain"
-                        source={{ uri: this.state.image }}
+                        source={{ uri: `file://${this.props.path}` }}
                     />
                     <Svg
                         height={this.state.viewHeight}

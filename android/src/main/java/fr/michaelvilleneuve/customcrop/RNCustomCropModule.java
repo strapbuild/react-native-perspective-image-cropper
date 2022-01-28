@@ -135,7 +135,7 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
         fileOutputStream.close();
 
         WritableMap map = Arguments.createMap();
-        map.putString("image", outputFile.getPath());
+        map.putString("path", outputFile.getPath());
         callback.invoke(null, map);
     } catch (Exception e) {
         Log.e(TAG, e.getMessage(), e);
