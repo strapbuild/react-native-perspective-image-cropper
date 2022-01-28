@@ -38,6 +38,7 @@ import org.opencv.calib3d.Calib3d;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -119,13 +120,24 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
     Bitmap bitmap = Bitmap.createBitmap(doc.cols(), doc.rows(), Bitmap.Config.ARGB_8888);
     Utils.matToBitmap(doc, bitmap);
 
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    bitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream);
-    byte[] byteArray = byteArrayOutputStream.toByteArray();
+    try {
+        File inputFile = new File(imageUri);
+        String inputFileName = inputFile.getName();
+        String inputFileNameExtension = inputFileName.substring(inputFileName.lastIndexOf("."));
+        String inputFileNameWithoutExtension = inputFileName.substring(0, inputFileName.lastIndexOf("."));
+        String outputFileName = inputFileNameWithoutExtension + "-cropped" + inputFileNameExtension;
+        File outputFile = new File(this.reactContext.getCacheDir(), outputFileName);
+        FileOutputStream fileOutputStream = new FileOutputStream(outputFile);
 
-    WritableMap map = Arguments.createMap();
-    map.putString("image", Base64.encodeToString(byteArray, Base64.DEFAULT));
-    callback.invoke(null, map);
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, fileOutputStream);
+        fileOutputStream.close();
+
+        WritableMap map = Arguments.createMap();
+        map.putString("image", outputFile.getPath());
+        callback.invoke(null, map);
+    } catch (Exception e) {
+        Log.e(TAG, e.getMessage(), e);
+    }
 
     m.release();
   }
