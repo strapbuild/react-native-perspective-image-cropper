@@ -1,6 +1,8 @@
 
 package fr.michaelvilleneuve.customcrop;
 
+import fr.michaelvilleneuve.customcrop.ImageProcessor;
+
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.provider.MediaStore;
@@ -142,4 +144,15 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
     m.release();
   }
 
+  @ReactMethod
+  public void findDocument(String imageUri, Callback callback) {
+    if (!imageUri.isEmpty()) {
+      Mat src = Imgcodecs.imread(imageUri.replace("file://", ""));
+      Imgproc.cvtColor(src, src, Imgproc.COLOR_BGR2RGB);
+
+      ImageProcessor ip = new ImageProcessor();
+
+      callback.invoke(null, ip.processPicture(src));
+    }
+  }
 }
