@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.util.Log;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -14,6 +15,10 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.WritableMap;
 
+import org.opencv.android.InstallCallbackInterface;
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.OpenCVLoader;
+import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -44,10 +49,28 @@ import java.util.List;
 public class RNCustomCropModule extends ReactContextBaseJavaModule {
 
   private final ReactApplicationContext reactContext;
+  private static final String TAG = "IMAGECROPPER";
 
   public RNCustomCropModule(ReactApplicationContext reactContext) {
     super(reactContext);
     this.reactContext = reactContext;
+
+    BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(reactContext) {
+      @Override
+      public void onManagerConnected(int status) {
+        if (status == LoaderCallbackInterface.SUCCESS) {
+          Log.d(TAG, "SUCCESS init OpenCV: " + status);
+        } else {
+          Log.d(TAG, "ERROR init OpenCV: " + status);
+        }
+      }
+    };
+
+    if (!OpenCVLoader.initDebug()) {
+      OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, reactContext, mLoaderCallback);
+    } else {
+      mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+    }
   }
 
   @Override
@@ -57,7 +80,6 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void crop(ReadableMap points, String imageUri, Callback callback) {
-
     Point tl = new Point(points.getMap("topLeft").getDouble("x"), points.getMap("topLeft").getDouble("y"));
     Point tr = new Point(points.getMap("topRight").getDouble("x"), points.getMap("topRight").getDouble("y"));
     Point bl = new Point(points.getMap("bottomLeft").getDouble("x"), points.getMap("bottomLeft").getDouble("y"));
