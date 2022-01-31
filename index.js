@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { forwardRef, useRef, useState } from 'react';
 import {
 	NativeModules,
 	PanResponder,
@@ -11,274 +11,214 @@ import Svg, { Polygon } from 'react-native-svg';
 
 const AnimatedPolygon = Animated.createAnimatedComponent(Polygon);
 
-class CustomCrop extends Component {
-	constructor(props) {
-		super(props);
-		this.state = {
-			viewHeight:
-				Dimensions.get('window').width * (props.height / props.width),
-			height: props.height,
-			width: props.width,
-			moving: false,
-		};
+const CustomCrop = forwardRef((props, ref) => {
+	const state = {};
+	const vars = {};
 
-		this.state = {
-			...this.state,
-			topLeft: new Animated.ValueXY(
-				props.rectangleCoordinates
-					? this.imageCoordinatesToViewCoordinates(
-						props.rectangleCoordinates.topLeft,
-						true,
-					)
-					: { x: 100, y: 100 },
-			),
-			topRight: new Animated.ValueXY(
-				props.rectangleCoordinates
-					? this.imageCoordinatesToViewCoordinates(
-						props.rectangleCoordinates.topRight,
-						true,
-					)
-					: { x: Dimensions.get('window').width - 100, y: 100 },
-			),
-			bottomLeft: new Animated.ValueXY(
-				props.rectangleCoordinates
-					? this.imageCoordinatesToViewCoordinates(
-						props.rectangleCoordinates.bottomLeft,
-						true,
-					)
-					: { x: 100, y: this.state.viewHeight - 100 },
-			),
-			bottomRight: new Animated.ValueXY(
-				props.rectangleCoordinates
-					? this.imageCoordinatesToViewCoordinates(
-						props.rectangleCoordinates.bottomRight,
-						true,
-					)
-					: {
-						x: Dimensions.get('window').width - 100,
-						y: this.state.viewHeight - 100,
-					},
-			),
-		};
-		this.state = {
-			...this.state,
-			overlayPositions: `${this.state.topLeft.x._value},${this.state.topLeft.y._value
-				} ${this.state.topRight.x._value},${this.state.topRight.y._value} ${this.state.bottomRight.x._value
-				},${this.state.bottomRight.y._value} ${this.state.bottomLeft.x._value
-				},${this.state.bottomLeft.y._value}`,
-		};
+	[state.viewHeight, state.setViewHeight] = useState(Dimensions.get('window').width * (props.height / props.width));
+	[state.height, state.setHeight] = useState(props.height);
+	[state.width, state.setwidth] = useState(props.width);
+	[state.moving, state.setMoving] = useState(false);
+	[state.topLeft, state.setTopLeft] = useState(getInitialCoordinateValue({ corner: 'topLeft', props, state }));
+	[state.topRight, state.setTopRight] = useState(getInitialCoordinateValue({ corner: 'topRight', props, state }));
+	[state.bottomLeft, state.setBottomLeft] = useState(getInitialCoordinateValue({ corner: 'bottomLeft', props, state }));
+	[state.bottomRight, state.setBottomRight] = useState(getInitialCoordinateValue({ corner: 'bottomRight', props, state }));
+	[state.overlayPositions, state.setOverlayPositions] = useState(getOverlayPositions({
+		topLeft: { x: state.topLeft.x._value, y: state.topLeft.y._value },
+		topRight: { x: state.topRight.x._value, y: state.topRight.y._value },
+		bottomRight: { x: state.bottomRight.x._value, y: state.bottomRight.y._value },
+		bottomLeft: { x: state.bottomLeft.x._value, y: state.bottomLeft.y._value },
+	}));
 
-		this.panResponderTopLeft = this.createPanResponser(this.state.topLeft);
-		this.panResponderTopRight = this.createPanResponser(
-			this.state.topRight,
-		);
-		this.panResponderBottomLeft = this.createPanResponser(
-			this.state.bottomLeft,
-		);
-		this.panResponderBottomRight = this.createPanResponser(
-			this.state.bottomRight,
-		);
-	}
+	vars.panResponderTopLeft = useRef(createPanResponser({ corner: state.topLeft, state }));
+	vars.panResponderTopRight = useRef(createPanResponser({ corner: state.topRight, state }));
+	vars.panResponderBottomLeft = useRef(createPanResponser({ corner: state.bottomLeft, state }));
+	vars.panResponderBottomRight = useRef(createPanResponser({ corner: state.bottomRight, state }));
 
-	createPanResponser(corner) {
-		return PanResponder.create({
-			onStartShouldSetPanResponder: () => true,
-			onPanResponderMove: Animated.event([
-				null,
-				{
-					dx: corner.x,
-					dy: corner.y,
-				},
-			], {
-				useNativeDriver: false,
-			}),
-			onPanResponderRelease: () => {
-				corner.flattenOffset();
-				this.updateOverlayString();
-			},
-			onPanResponderGrant: () => {
-				corner.setOffset({ x: corner.x._value, y: corner.y._value });
-				corner.setValue({ x: 0, y: 0 });
-			},
-		});
-	}
-
-	crop() {
-		const coordinates = {
-			topLeft: this.viewCoordinatesToImageCoordinates(this.state.topLeft),
-			topRight: this.viewCoordinatesToImageCoordinates(
-				this.state.topRight,
-			),
-			bottomLeft: this.viewCoordinatesToImageCoordinates(
-				this.state.bottomLeft,
-			),
-			bottomRight: this.viewCoordinatesToImageCoordinates(
-				this.state.bottomRight,
-			),
-			height: this.state.height,
-			width: this.state.width,
-		};
-		NativeModules.CustomCropManager.crop(
-			coordinates,
-			`file://${this.props.path}`,
-			(err, res) => {
-				if (err) {
-					console.warn(err);
-					return;
-				}
-
-				this.props.updateImage(res.path, coordinates);
-			},
-		);
-	}
-
-	updateOverlayString() {
-		this.setState({
-			overlayPositions: `${this.state.topLeft.x._value},${this.state.topLeft.y._value
-				} ${this.state.topRight.x._value},${this.state.topRight.y._value} ${this.state.bottomRight.x._value
-				},${this.state.bottomRight.y._value} ${this.state.bottomLeft.x._value
-				},${this.state.bottomLeft.y._value}`,
-		});
-	}
-
-	imageCoordinatesToViewCoordinates(corner) {
-		return {
-			x: (corner.x * Dimensions.get('window').width) / this.state.width,
-			y: (corner.y * this.state.viewHeight) / this.state.height,
+	if (ref) {
+		ref.current = {
+			crop: () => crop({ props, state }),
 		};
 	}
 
-	viewCoordinatesToImageCoordinates(corner) {
-		return {
-			x:
-				(corner.x._value / Dimensions.get('window').width) *
-				this.state.width,
-			y: (corner.y._value / this.state.viewHeight) * this.state.height,
-		};
-	}
-
-	render() {
-		return (
-			<View
-				style={{
-					flex: 1,
-					alignItems: 'center',
-					justifyContent: 'flex-end',
-				}}
-			>
-				<View
+	return (
+		<View style={{
+			flex: 1,
+			alignItems: 'center',
+			justifyContent: 'flex-end',
+		}}>
+			<View style={[
+				s(props).cropContainer,
+				{ height: state.viewHeight },
+			]}>
+				<Image
 					style={[
-						s(this.props).cropContainer,
-						{ height: this.state.viewHeight },
+						s(props).image,
+						{ height: state.viewHeight },
+					]}
+					resizeMode='contain'
+					source={{ uri: `file://${props.path}` }}
+				/>
+
+				<Svg
+					height={state.viewHeight}
+					width={Dimensions.get('window').width}
+					style={{ position: 'absolute', left: 0, top: 0 }}
+				>
+					<AnimatedPolygon
+						fill={props.overlayColor || 'blue'}
+						fillOpacity={props.overlayOpacity || 0.5}
+						stroke={props.overlayStrokeColor || 'blue'}
+						points={state.overlayPositions}
+						strokeWidth={props.overlayStrokeWidth || 3}
+					/>
+				</Svg>
+
+				<Animated.View
+					{...vars.panResponderTopLeft.current.panHandlers}
+					style={[
+						state.topLeft.getLayout(),
+						s(props).handler,
 					]}
 				>
-					<Image
-						style={[
-							s(this.props).image,
-							{ height: this.state.viewHeight },
-						]}
-						resizeMode="contain"
-						source={{ uri: `file://${this.props.path}` }}
-					/>
-					<Svg
-						height={this.state.viewHeight}
-						width={Dimensions.get('window').width}
-						style={{ position: 'absolute', left: 0, top: 0 }}
-					>
-						<AnimatedPolygon
-							ref={(ref) => (this.polygon = ref)}
-							fill={this.props.overlayColor || 'blue'}
-							fillOpacity={this.props.overlayOpacity || 0.5}
-							stroke={this.props.overlayStrokeColor || 'blue'}
-							points={this.state.overlayPositions}
-							strokeWidth={this.props.overlayStrokeWidth || 3}
-						/>
-					</Svg>
-					<Animated.View
-						{...this.panResponderTopLeft.panHandlers}
-						style={[
-							this.state.topLeft.getLayout(),
-							s(this.props).handler,
-						]}
-					>
-						<View
-							style={[
-								s(this.props).handlerI,
-								{ left: -10, top: -10 },
-							]}
-						/>
-						<View
-							style={[
-								s(this.props).handlerRound,
-								{ left: 31, top: 31 },
-							]}
-						/>
-					</Animated.View>
-					<Animated.View
-						{...this.panResponderTopRight.panHandlers}
-						style={[
-							this.state.topRight.getLayout(),
-							s(this.props).handler,
-						]}
-					>
-						<View
-							style={[
-								s(this.props).handlerI,
-								{ left: 10, top: -10 },
-							]}
-						/>
-						<View
-							style={[
-								s(this.props).handlerRound,
-								{ right: 31, top: 31 },
-							]}
-						/>
-					</Animated.View>
-					<Animated.View
-						{...this.panResponderBottomLeft.panHandlers}
-						style={[
-							this.state.bottomLeft.getLayout(),
-							s(this.props).handler,
-						]}
-					>
-						<View
-							style={[
-								s(this.props).handlerI,
-								{ left: -10, top: 10 },
-							]}
-						/>
-						<View
-							style={[
-								s(this.props).handlerRound,
-								{ left: 31, bottom: 31 },
-							]}
-						/>
-					</Animated.View>
-					<Animated.View
-						{...this.panResponderBottomRight.panHandlers}
-						style={[
-							this.state.bottomRight.getLayout(),
-							s(this.props).handler,
-						]}
-					>
-						<View
-							style={[
-								s(this.props).handlerI,
-								{ left: 10, top: 10 },
-							]}
-						/>
-						<View
-							style={[
-								s(this.props).handlerRound,
-								{ right: 31, bottom: 31 },
-							]}
-						/>
-					</Animated.View>
-				</View>
+					<View style={[
+						s(props).handlerI,
+						{ left: -10, top: -10 },
+					]} />
+					<View style={[
+						s(props).handlerRound,
+						{ left: 31, top: 31 },
+					]} />
+				</Animated.View>
+				<Animated.View
+					{...vars.panResponderTopRight.current.panHandlers}
+					style={[
+						state.topRight.getLayout(),
+						s(props).handler,
+					]}
+				>
+					<View style={[
+						s(props).handlerI,
+						{ left: 10, top: -10 },
+					]} />
+					<View style={[
+						s(props).handlerRound,
+						{ right: 31, top: 31 },
+					]} />
+				</Animated.View>
+				<Animated.View
+					{...vars.panResponderBottomLeft.current.panHandlers}
+					style={[
+						state.bottomLeft.getLayout(),
+						s(props).handler,
+					]}
+				>
+					<View style={[
+						s(props).handlerI,
+						{ left: -10, top: 10 },
+					]} />
+					<View style={[
+						s(props).handlerRound,
+						{ left: 31, bottom: 31 },
+					]} />
+				</Animated.View>
+				<Animated.View
+					{...vars.panResponderBottomRight.current.panHandlers}
+					style={[
+						state.bottomRight.getLayout(),
+						s(props).handler,
+					]}
+				>
+					<View style={[
+						s(props).handlerI,
+						{ left: 10, top: 10 },
+					]} />
+					<View style={[
+						s(props).handlerRound,
+						{ right: 31, bottom: 31 },
+					]} />
+				</Animated.View>
 			</View>
-		);
-	}
+		</View>
+	);
+});
+
+const getInitialCoordinateValue = ({ corner, props, state }) => {
+	let defaultValues = {
+		topLeft: { x: 100, y: 100 },
+		topRight: { x: Dimensions.get('window').width - 100, y: 100 },
+		bottomLeft: { x: 100, y: state.viewHeight - 100 },
+		bottomRight: { x: Dimensions.get('window').width - 100, y: state.viewHeight - 100 },
+	};
+
+	let value = props.rectangleCoordinates ? imageCoordinatesToViewCoordinates({ corner: props.rectangleCoordinates[corner], state }) : defaultValues[corner];
+
+	return new Animated.ValueXY(value);
 }
+
+const getOverlayPositions = ({ topLeft, topRight, bottomRight, bottomLeft }) => {
+	return `${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y} ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}`;
+};
+
+const createPanResponser = ({ corner, state }) => {
+	return PanResponder.create({
+		onStartShouldSetPanResponder: () => true,
+		onPanResponderMove: Animated.event([null, { dx: corner.x, dy: corner.y }], { useNativeDriver: false }),
+		onPanResponderRelease: () => {
+			corner.flattenOffset();
+			updateOverlayString({ state });
+		},
+		onPanResponderGrant: () => {
+			corner.setOffset({ x: corner.x._value, y: corner.y._value });
+			corner.setValue({ x: 0, y: 0 });
+		},
+	});
+};
+
+const crop = ({ props, state }) => {
+	const coordinates = {
+		topLeft: viewCoordinatesToImageCoordinates({ corner: state.topLeft, state }),
+		topRight: viewCoordinatesToImageCoordinates({ corner: state.topRight, state }),
+		bottomLeft: viewCoordinatesToImageCoordinates({ corner: state.bottomLeft, state }),
+		bottomRight: viewCoordinatesToImageCoordinates({ corner: state.bottomRight, state }),
+		height: state.height,
+		width: state.width,
+	};
+
+	NativeModules.CustomCropManager.crop(coordinates, `file://${props.path}`, (error, res) => {
+		if (error) {
+			console.warn(error);
+			return;
+		}
+
+		props.updateImage(`file://${res.path}`, coordinates);
+	});
+};
+
+const updateOverlayString = ({ state }) => {
+	let overlayPositions = getOverlayPositions({
+		topLeft: { x: state.topLeft.x._value, y: state.topLeft.y._value },
+		topRight: { x: state.topRight.x._value, y: state.topRight.y._value },
+		bottomRight: { x: state.bottomRight.x._value, y: state.bottomRight.y._value },
+		bottomLeft: { x: state.bottomLeft.x._value, y: state.bottomLeft.y._value },
+	});
+
+	state.setOverlayPositions(overlayPositions);
+};
+
+const imageCoordinatesToViewCoordinates = ({ corner, state }) => {
+	return {
+		x: (corner.x * Dimensions.get('window').width) / state.width,
+		y: (corner.y * state.viewHeight) / state.height,
+	};
+};
+
+const viewCoordinatesToImageCoordinates = ({ corner, state }) => {
+	return {
+		x: (corner.x._value / Dimensions.get('window').width) * state.width,
+		y: (corner.y._value / state.viewHeight) * state.height,
+	};
+};
 
 const s = (props) => ({
 	handlerI: {
@@ -324,4 +264,4 @@ const s = (props) => ({
 	},
 });
 
-export default CustomCrop;
+export { CustomCrop }
