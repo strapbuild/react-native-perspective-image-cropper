@@ -8,26 +8,40 @@ import {
 	Animated,
 } from 'react-native';
 import Svg, { Polygon } from 'react-native-svg';
+import type {
+	CreatePanResponserArgs,
+	CropArgs,
+	CropResult,
+	GetInitialCoordinateValueArgs,
+	GetOverlayPositionsArgs,
+	ImageCoordinatesToViewCoordinatesArgs,
+	Props,
+	Ref,
+	State,
+	UpdateOverlayStringArgs,
+	Vars,
+	ViewCoordinatesToImageCoordinatesArgs,
+} from './types';
 
 const AnimatedPolygon = Animated.createAnimatedComponent(Polygon);
 
-const CustomCrop = forwardRef((props, ref) => {
-	const state = {};
-	const vars = {};
+const CustomCrop = forwardRef<Ref, Props>((props, forwarededRef) => {
+	const state = {} as State;
+	const vars = {} as Vars;
 
 	[state.viewHeight, state.setViewHeight] = useState(Dimensions.get('window').width * (props.height / props.width));
 	[state.height, state.setHeight] = useState(props.height);
-	[state.width, state.setwidth] = useState(props.width);
-	[state.moving, state.setMoving] = useState(false);
+	[state.width, state.setWidth] = useState(props.width);
+	[state.moving, state.setMoving] = useState(false as boolean);
 	[state.topLeft, state.setTopLeft] = useState(getInitialCoordinateValue({ corner: 'topLeft', props, state }));
 	[state.topRight, state.setTopRight] = useState(getInitialCoordinateValue({ corner: 'topRight', props, state }));
 	[state.bottomLeft, state.setBottomLeft] = useState(getInitialCoordinateValue({ corner: 'bottomLeft', props, state }));
 	[state.bottomRight, state.setBottomRight] = useState(getInitialCoordinateValue({ corner: 'bottomRight', props, state }));
 	[state.overlayPositions, state.setOverlayPositions] = useState(getOverlayPositions({
-		topLeft: { x: state.topLeft.x._value, y: state.topLeft.y._value },
-		topRight: { x: state.topRight.x._value, y: state.topRight.y._value },
-		bottomRight: { x: state.bottomRight.x._value, y: state.bottomRight.y._value },
-		bottomLeft: { x: state.bottomLeft.x._value, y: state.bottomLeft.y._value },
+		topLeft: state.topLeft,
+		topRight: state.topRight,
+		bottomRight: state.bottomRight,
+		bottomLeft: state.bottomLeft,
 	}));
 
 	vars.panResponderTopLeft = useRef(createPanResponser({ corner: state.topLeft, state }));
@@ -35,10 +49,16 @@ const CustomCrop = forwardRef((props, ref) => {
 	vars.panResponderBottomLeft = useRef(createPanResponser({ corner: state.bottomLeft, state }));
 	vars.panResponderBottomRight = useRef(createPanResponser({ corner: state.bottomRight, state }));
 
-	if (ref) {
-		ref.current = {
+	if (forwarededRef) {
+		let refInstance = {
 			crop: () => crop({ props, state }),
 		};
+
+		if (typeof forwarededRef === 'function') {
+			forwarededRef(refInstance)
+		} else {
+			forwarededRef.current = refInstance;
+		}
 	}
 
 	return (
@@ -143,7 +163,48 @@ const CustomCrop = forwardRef((props, ref) => {
 	);
 });
 
-const getInitialCoordinateValue = ({ corner, props, state }) => {
+const createPanResponser = ({ corner, state }: CreatePanResponserArgs) => {
+	return PanResponder.create({
+		onStartShouldSetPanResponder: () => true,
+		onPanResponderMove: Animated.event([null, { dx: corner.x, dy: corner.y }], { useNativeDriver: false }),
+		onPanResponderRelease: () => {
+			corner.flattenOffset();
+			updateOverlayString({ state });
+		},
+		onPanResponderGrant: () => {
+			corner.setOffset(getAnimatedXyNumbers(corner));
+			corner.setValue({ x: 0, y: 0 });
+		},
+	});
+};
+
+const crop = ({ props, state }: CropArgs) => {
+	const coordinates = {
+		topLeft: viewCoordinatesToImageCoordinates({ corner: getAnimatedXyNumbers(state.topLeft), state }),
+		topRight: viewCoordinatesToImageCoordinates({ corner: getAnimatedXyNumbers(state.topRight), state }),
+		bottomLeft: viewCoordinatesToImageCoordinates({ corner: getAnimatedXyNumbers(state.bottomLeft), state }),
+		bottomRight: viewCoordinatesToImageCoordinates({ corner: getAnimatedXyNumbers(state.bottomRight), state }),
+	};
+
+	NativeModules.CustomCropManager.crop(coordinates, `file://${props.path}`, (error: Error | null, res: CropResult) => {
+		if (error) {
+			console.warn(error);
+			return;
+		}
+
+		props.updateImage(`file://${res.path}`, coordinates);
+	});
+};
+
+const getAnimatedNumber = (value: Animated.Value) => {
+	return (value as any)._value as number;
+};
+
+const getAnimatedXyNumbers = (value: Animated.ValueXY) => {
+	return { x: getAnimatedNumber(value.x), y: getAnimatedNumber(value.y) };
+};
+
+const getInitialCoordinateValue = ({ corner, props, state }: GetInitialCoordinateValueArgs) => {
 	let defaultValues = {
 		topLeft: { x: 100, y: 100 },
 		topRight: { x: Dimensions.get('window').width - 100, y: 100 },
@@ -156,71 +217,41 @@ const getInitialCoordinateValue = ({ corner, props, state }) => {
 	return new Animated.ValueXY(value);
 }
 
-const getOverlayPositions = ({ topLeft, topRight, bottomRight, bottomLeft }) => {
-	return `${topLeft.x},${topLeft.y} ${topRight.x},${topRight.y} ${bottomRight.x},${bottomRight.y} ${bottomLeft.x},${bottomLeft.y}`;
+const getOverlayPositions = ({ topLeft, topRight, bottomRight, bottomLeft }: GetOverlayPositionsArgs) => {
+	return [
+		`${getAnimatedNumber(topLeft.x)},${getAnimatedNumber(topLeft.y)}`,
+		`${getAnimatedNumber(topRight.x)},${getAnimatedNumber(topRight.y)}`,
+		`${getAnimatedNumber(bottomRight.x)},${getAnimatedNumber(bottomRight.y)}`,
+		`${getAnimatedNumber(bottomLeft.x)},${getAnimatedNumber(bottomLeft.y)}`
+	].join(' ');
 };
 
-const createPanResponser = ({ corner, state }) => {
-	return PanResponder.create({
-		onStartShouldSetPanResponder: () => true,
-		onPanResponderMove: Animated.event([null, { dx: corner.x, dy: corner.y }], { useNativeDriver: false }),
-		onPanResponderRelease: () => {
-			corner.flattenOffset();
-			updateOverlayString({ state });
-		},
-		onPanResponderGrant: () => {
-			corner.setOffset({ x: corner.x._value, y: corner.y._value });
-			corner.setValue({ x: 0, y: 0 });
-		},
-	});
-};
-
-const crop = ({ props, state }) => {
-	const coordinates = {
-		topLeft: viewCoordinatesToImageCoordinates({ corner: state.topLeft, state }),
-		topRight: viewCoordinatesToImageCoordinates({ corner: state.topRight, state }),
-		bottomLeft: viewCoordinatesToImageCoordinates({ corner: state.bottomLeft, state }),
-		bottomRight: viewCoordinatesToImageCoordinates({ corner: state.bottomRight, state }),
-		height: state.height,
-		width: state.width,
-	};
-
-	NativeModules.CustomCropManager.crop(coordinates, `file://${props.path}`, (error, res) => {
-		if (error) {
-			console.warn(error);
-			return;
-		}
-
-		props.updateImage(`file://${res.path}`, coordinates);
-	});
-};
-
-const updateOverlayString = ({ state }) => {
-	let overlayPositions = getOverlayPositions({
-		topLeft: { x: state.topLeft.x._value, y: state.topLeft.y._value },
-		topRight: { x: state.topRight.x._value, y: state.topRight.y._value },
-		bottomRight: { x: state.bottomRight.x._value, y: state.bottomRight.y._value },
-		bottomLeft: { x: state.bottomLeft.x._value, y: state.bottomLeft.y._value },
-	});
-
-	state.setOverlayPositions(overlayPositions);
-};
-
-const imageCoordinatesToViewCoordinates = ({ corner, state }) => {
+const imageCoordinatesToViewCoordinates = ({ corner, state }: ImageCoordinatesToViewCoordinatesArgs) => {
 	return {
 		x: (corner.x * Dimensions.get('window').width) / state.width,
 		y: (corner.y * state.viewHeight) / state.height,
 	};
 };
 
-const viewCoordinatesToImageCoordinates = ({ corner, state }) => {
+const updateOverlayString = ({ state }: UpdateOverlayStringArgs) => {
+	let overlayPositions = getOverlayPositions({
+		topLeft: state.topLeft,
+		topRight: state.topRight,
+		bottomRight: state.bottomRight,
+		bottomLeft: state.bottomLeft,
+	});
+
+	state.setOverlayPositions(overlayPositions);
+};
+
+const viewCoordinatesToImageCoordinates = ({ corner, state }: ViewCoordinatesToImageCoordinatesArgs) => {
 	return {
-		x: (corner.x._value / Dimensions.get('window').width) * state.width,
-		y: (corner.y._value / state.viewHeight) * state.height,
+		x: (corner.x / Dimensions.get('window').width) * state.width,
+		y: (corner.y / state.viewHeight) * state.height,
 	};
 };
 
-const s = (props) => ({
+const s = (props: Props) => ({
 	handlerI: {
 		borderRadius: 0,
 		height: 20,
@@ -262,6 +293,6 @@ const s = (props) => ({
 		width: Dimensions.get('window').width,
 		top: 0,
 	},
-});
+} as const);
 
 export { CustomCrop }
