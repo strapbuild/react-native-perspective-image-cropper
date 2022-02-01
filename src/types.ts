@@ -61,22 +61,16 @@ export interface Props {
 export type Ref = { crop: any };
 
 export interface State {
-	bottomLeft: Animated.ValueXY;
-	bottomRight: Animated.ValueXY;
+	corners: AnimatedCoordinates;
 	height: number;
 	moving: boolean;
 	overlayPositions: string;
-	setBottomLeft: StateSetter<Animated.ValueXY>;
-	setBottomRight: StateSetter<Animated.ValueXY>;
+	setCorners: StateSetter<AnimatedCoordinates>;
 	setHeight: StateSetter<number>;
 	setMoving: StateSetter<boolean>;
 	setOverlayPositions: StateSetter<string>;
-	setTopLeft: StateSetter<Animated.ValueXY>;
-	setTopRight: StateSetter<Animated.ValueXY>;
 	setViewHeight: StateSetter<number>;
 	setWidth: StateSetter<number>;
-	topLeft: Animated.ValueXY;
-	topRight: Animated.ValueXY;
 	viewHeight: number;
 	width: number;
 }
