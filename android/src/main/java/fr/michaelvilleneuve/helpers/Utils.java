@@ -239,4 +239,29 @@ public class Utils {
         }
         return app_installed;
     }
+
+    public static Mat convertYuvToMat(Image img) {
+        byte[] nv21;
+
+        ByteBuffer yBuffer = img.getPlanes()[0].getBuffer();
+        ByteBuffer uBuffer = img.getPlanes()[1].getBuffer();
+        ByteBuffer vBuffer = img.getPlanes()[2].getBuffer();
+
+        int ySize = yBuffer.remaining();
+        int uSize = uBuffer.remaining();
+        int vSize = vBuffer.remaining();
+
+        nv21 = new byte[ySize + uSize + vSize];
+
+        yBuffer.get(nv21, 0, ySize);
+        vBuffer.get(nv21, ySize, vSize);
+        uBuffer.get(nv21, ySize + vSize, uSize);
+
+        Mat yuv = new Mat(img.getHeight() + img.getHeight()/2, img.getWidth(), CvType.CV_8UC1);
+        yuv.put(0, 0, nv21);
+        Mat rgb = new Mat();
+        Imgproc.cvtColor(yuv, rgb, Imgproc.COLOR_YUV2RGB_NV21, 3);
+        Core.rotate(rgb, rgb, Core.ROTATE_90_CLOCKWISE);
+        return rgb;
+    }
 }

@@ -5,6 +5,7 @@ import fr.michaelvilleneuve.customcrop.ImageProcessor;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.Image;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.util.Log;
@@ -154,5 +155,21 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
 
       callback.invoke(null, ip.processPicture(src));
     }
+  }
+
+  public WritableMap findDocument(Image image, int rotation) {
+    Mat mat = null;
+
+    try {
+        mat = fr.michaelvilleneuve.helpers.Utils.convertYuvToMat(image);
+
+        Imgcodecs.imwrite("/data/user/0/com.dataccloud.debug/cache/kobian.jpg", mat);
+    } catch (Exception e) {
+        Log.e(TAG, e.getMessage(), e);
+    }
+
+    ImageProcessor ip = new ImageProcessor();
+
+    return ip.processPicture(mat);
   }
 }
