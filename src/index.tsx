@@ -64,10 +64,11 @@ const CustomCrop = forwardRef<Ref, Props>((props, forwarededRef) => {
 			if (coordinates) {
 				let { topLeft, topRight, bottomLeft, bottomRight } = coordinates;
 
-				let viewTopLeft = imageCoordinatesToViewCoordinates({ corner: topLeft, state });
-				let viewTopRight = imageCoordinatesToViewCoordinates({ corner: topRight, state });
-				let viewBottomLeft = imageCoordinatesToViewCoordinates({ corner: bottomLeft, state });
-				let viewBottomRight = imageCoordinatesToViewCoordinates({ corner: bottomRight, state });
+				let adjustment = 20;
+				let viewTopLeft = imageCoordinatesToViewCoordinates({ corner: { x: topLeft.x + adjustment, y: topLeft.y + adjustment }, state });
+				let viewTopRight = imageCoordinatesToViewCoordinates({ corner: { x: topRight.x - adjustment, y: topRight.y + adjustment }, state });
+				let viewBottomLeft = imageCoordinatesToViewCoordinates({ corner: { x: bottomLeft.x + adjustment, y: bottomLeft.y - adjustment }, state });
+				let viewBottomRight = imageCoordinatesToViewCoordinates({ corner: { x: bottomRight.x - adjustment, y: bottomRight.y - adjustment }, state });
 
 				let animatedTopLeft = new Animated.ValueXY(viewTopLeft);
 				let animatedTopRight = new Animated.ValueXY(viewTopRight);
