@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated } from 'react-native';
+import { Animated, View } from 'react-native';
 import type { PanResponderInstance } from 'react-native';
 
 export interface CropResult {
@@ -64,11 +64,11 @@ export interface State {
 	corners: AnimatedCoordinates;
 	height: number;
 	moving: boolean;
-	overlayPositions: string;
+	overlayPositions: number[];
 	setCorners: StateSetter<AnimatedCoordinates>;
 	setHeight: StateSetter<number>;
 	setMoving: StateSetter<boolean>;
-	setOverlayPositions: StateSetter<string>;
+	setOverlayPositions: StateSetter<number[]>;
 	setViewHeight: StateSetter<number>;
 	setWidth: StateSetter<number>;
 	viewHeight: number;
@@ -91,6 +91,7 @@ export interface Vars {
 	panResponderBottomRight: React.MutableRefObject<PanResponderInstance>;
 	panResponderTopLeft: React.MutableRefObject<PanResponderInstance>;
 	panResponderTopRight: React.MutableRefObject<PanResponderInstance>;
+	polygonRef: React.MutableRefObject<View | undefined>;
 }
 
 export interface ViewCoordinatesToImageCoordinatesArgs {

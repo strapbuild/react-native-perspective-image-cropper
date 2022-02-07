@@ -7,7 +7,7 @@ import {
 	View,
 	Animated,
 } from 'react-native';
-import Svg, { Polygon } from 'react-native-svg';
+import Svg, { Polygon, PolygonProps } from 'react-native-svg';
 import type {
 	Coordinates,
 	CreatePanResponserArgs,
@@ -51,6 +51,7 @@ const CustomCrop = forwardRef<Ref, Props>((props, forwarededRef) => {
 	vars.panResponderTopRight = useRef(createPanResponser({ corner: state.corners.topRight, state }));
 	vars.panResponderBottomLeft = useRef(createPanResponser({ corner: state.corners.bottomLeft, state }));
 	vars.panResponderBottomRight = useRef(createPanResponser({ corner: state.corners.bottomRight, state }));
+	vars.polygonRef = useRef();
 
 	useEffect(() => {
 		NativeModules.CustomCropManager.findDocument(`file://${props.path}`, (error: Error, coordinates: Coordinates) => {
@@ -109,6 +110,29 @@ const CustomCrop = forwardRef<Ref, Props>((props, forwarededRef) => {
 		}
 	}
 
+	useEffect(() => {
+		let createListener = ({ xIndex, yIndex }: { xIndex: number; yIndex: number; }) => ({ x, y }: { x: number; y: number; }) => {
+			let points = (vars.polygonRef.current?.props as PolygonProps).points as number[];
+
+			points[xIndex] = x;
+			points[yIndex] = y;
+
+			vars.polygonRef.current?.setNativeProps({ points });
+		};
+
+		let listenerTopLeftId = state.corners.topLeft.addListener(createListener({ xIndex: 0, yIndex: 1 }));
+		let listenerTopRightId = state.corners.topRight.addListener(createListener({ xIndex: 2, yIndex: 3 }));
+		let listenerBottomRightId = state.corners.bottomRight.addListener(createListener({ xIndex: 4, yIndex: 5 }));
+		let listenerBottomLeftId = state.corners.bottomLeft.addListener(createListener({ xIndex: 6, yIndex: 7 }));
+
+		return () => {
+			state.corners.topLeft.removeListener(listenerTopLeftId);
+			state.corners.topRight.removeListener(listenerTopRightId);
+			state.corners.bottomRight.removeListener(listenerBottomRightId);
+			state.corners.bottomLeft.removeListener(listenerBottomLeftId);
+		};
+	}, [state.corners]);
+
 	return (
 		<View style={{
 			flex: 1,
@@ -138,6 +162,7 @@ const CustomCrop = forwardRef<Ref, Props>((props, forwarededRef) => {
 						fillOpacity={props.overlayOpacity || 0.5}
 						stroke={props.overlayStrokeColor || 'blue'}
 						points={state.overlayPositions}
+						ref={vars.polygonRef}
 						strokeWidth={props.overlayStrokeWidth || 3}
 					/>
 				</Svg>
@@ -267,11 +292,15 @@ const getInitialCoordinateValue = ({ corner, props, state }: GetInitialCoordinat
 
 const getOverlayPositions = ({ topLeft, topRight, bottomRight, bottomLeft }: GetOverlayPositionsArgs) => {
 	return [
-		`${getAnimatedNumber(topLeft.x)},${getAnimatedNumber(topLeft.y)}`,
-		`${getAnimatedNumber(topRight.x)},${getAnimatedNumber(topRight.y)}`,
-		`${getAnimatedNumber(bottomRight.x)},${getAnimatedNumber(bottomRight.y)}`,
-		`${getAnimatedNumber(bottomLeft.x)},${getAnimatedNumber(bottomLeft.y)}`
-	].join(' ');
+		getAnimatedNumber(topLeft.x),
+		getAnimatedNumber(topLeft.y),
+		getAnimatedNumber(topRight.x),
+		getAnimatedNumber(topRight.y),
+		getAnimatedNumber(bottomRight.x),
+		getAnimatedNumber(bottomRight.y),
+		getAnimatedNumber(bottomLeft.x),
+		getAnimatedNumber(bottomLeft.y),
+	];
 };
 
 const imageCoordinatesToViewCoordinates = ({ corner, state }: ImageCoordinatesToViewCoordinatesArgs) => {
