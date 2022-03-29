@@ -266,7 +266,7 @@ const crop = ({ props, state }: CropArgs) => {
 			return;
 		}
 
-		props.updateImage(`file://${res.path}`, coordinates);
+		props.updateImage(res.path, coordinates);
 	});
 };
 
