@@ -51,7 +51,7 @@ const CustomCrop = forwardRef<Ref, Props>((props, forwarededRef) => {
 	vars.panResponderTopRight = useRef(createPanResponser({ corner: state.corners.topRight, state }));
 	vars.panResponderBottomLeft = useRef(createPanResponser({ corner: state.corners.bottomLeft, state }));
 	vars.panResponderBottomRight = useRef(createPanResponser({ corner: state.corners.bottomRight, state }));
-	vars.polygonRef = useRef();
+	vars.polygonRef = useRef(null);
 
 	useEffect(() => {
 		NativeModules.CustomCropManager.findDocument(`file://${props.path}`, (error: Error, coordinates: Coordinates) => {

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Animated, View } from 'react-native';
+import { Animated } from 'react-native';
+import { Polygon } from 'react-native-svg';
 import type { PanResponderInstance } from 'react-native';
 
 export interface CropResult {
@@ -91,7 +92,7 @@ export interface Vars {
 	panResponderBottomRight: React.MutableRefObject<PanResponderInstance>;
 	panResponderTopLeft: React.MutableRefObject<PanResponderInstance>;
 	panResponderTopRight: React.MutableRefObject<PanResponderInstance>;
-	polygonRef: React.MutableRefObject<View | undefined>;
+	polygonRef: React.MutableRefObject<Polygon | null>;
 }
 
 export interface ViewCoordinatesToImageCoordinatesArgs {
