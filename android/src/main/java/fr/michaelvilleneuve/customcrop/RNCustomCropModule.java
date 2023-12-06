@@ -49,6 +49,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import com.facebook.react.module.annotations.ReactModule;
 
 @ReactModule(name = RNCustomCropModule.NAME)
 public class RNCustomCropModule extends ReactContextBaseJavaModule {
