@@ -50,8 +50,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
+@ReactModule(name = RNCustomCropModule.NAME)
 public class RNCustomCropModule extends ReactContextBaseJavaModule {
 
+  public static final String NAME = "CustomCropManager";
   private final ReactApplicationContext reactContext;
   private static final String TAG = "IMAGECROPPER";
 
@@ -79,7 +81,7 @@ public class RNCustomCropModule extends ReactContextBaseJavaModule {
 
   @Override
   public String getName() {
-    return "CustomCropManager";
+    return NAME;
   }
 
   @ReactMethod
